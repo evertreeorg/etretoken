@@ -1,0 +1,7 @@
+.env
+.idea
+build
+.openzeppelin
+node_modules
+truffle-config.js
+
