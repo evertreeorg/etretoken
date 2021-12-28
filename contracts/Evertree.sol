@@ -10,13 +10,14 @@ import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
-contract Evertree is  Initializable,
+contract Evertree is
+    Initializable,
     UUPSUpgradeable,
     ERC20Upgradeable,
     OwnableUpgradeable,
     ERC20PausableUpgradeable,
-    ReentrancyGuardUpgradeable {
-
+    ReentrancyGuardUpgradeable
+{
     using AddressUpgradeable for address;
     using SafeMathUpgradeable for uint256;
 
@@ -32,8 +33,6 @@ contract Evertree is  Initializable,
     // @notice _totalSupply is the amount of ETRE minted / available, the supply will increase progressively until the _cap is reached
     uint256 private _totalSupply;
 
-  
-
     // @notice the owner of the contract (the account used to deploy it, not the same as operator)
     address public _owner;
 
@@ -44,11 +43,10 @@ contract Evertree is  Initializable,
     address public charity;
     uint8 public _decimals;
 
-    mapping (address => uint256) private _balances;
+    mapping(address => uint256) private _balances;
     mapping(address => mapping(address => uint256)) private _allowances;
 
-  
-       // _authorizeUpgrade of the token only from the owner of the contract (UUPSProxy interface implementation)
+    // _authorizeUpgrade of the token only from the owner of the contract (UUPSProxy interface implementation)
     function _authorizeUpgrade(address) internal override onlyOwner {}
 
     // initialize is the initialization function of the contract to enable the upgradeable behaviour via the UUPS Proxy
@@ -58,7 +56,6 @@ contract Evertree is  Initializable,
         uint256 cap_,
         uint256 totalSupply_
     ) public initializer {
-        
         _name = "EVERTREE";
         _symbol = "ETRE";
 
@@ -71,48 +68,54 @@ contract Evertree is  Initializable,
         _decimals = 18;
 
         _owner = owner_;
-        _cap = cap_ * 10 ** decimals();
-        
+        _cap = cap_ * 10**decimals();
+
         ceo = payable(0x77DaD28f302EBD245f15480Be38037197cC4135d);
         cfo = payable(0x479D80a319df59814Fa45e08817798ff96273607);
         cto = payable(0x2264D2D5E550A5521681fB093aaCE0Ff73C22C41);
-      
-        _totalSupply = totalSupply_ * 10 ** decimals();
+
+        _totalSupply = totalSupply_ * 10**decimals();
         mint(_owner, _totalSupply);
 
-        cLevelBalance(ceo, 1920000 * 10 ** decimals());
-        cLevelBalance(cto, 1920000 * 10 ** decimals());
-        cLevelBalance(cfo, 1920000 * 10 ** decimals());
-        
+        cLevelBalance(ceo, 1920000 * 10**decimals());
+        cLevelBalance(cto, 1920000 * 10**decimals());
+        cLevelBalance(cfo, 1920000 * 10**decimals());
     }
 
     modifier onlyOwnerOrCTO() {
-      require(msg.sender == _owner || msg.sender == cto);
-      _;
+        require(msg.sender == _owner || msg.sender == cto);
+        _;
     }
 
     modifier capNotReached(uint256 amount) {
-              require(totalSupply() + amount <= cap(), "ERC20Capped: cap exceeded");
-              _;
-
+        require(totalSupply() + amount <= cap(), "ERC20Capped: cap exceeded");
+        _;
     }
 
-    function mint(address to, uint256 amount) private capNotReached(amount) onlyOwnerOrCTO {
+    function mint(address to, uint256 amount)
+        private
+        capNotReached(amount)
+        onlyOwnerOrCTO
+    {
         super._mint(to, amount);
         emit Mint(msg.sender, to, amount);
     }
 
-    function cLevelBalance(address payable acct, uint256 amount) private capNotReached(amount) onlyOwnerOrCTO {
+    function cLevelBalance(address payable acct, uint256 amount)
+        private
+        capNotReached(amount)
+        onlyOwnerOrCTO
+    {
         _transfer(_owner, acct, amount);
     }
 
-    function cap() public view virtual returns(uint256) {
-      return _cap;
+    function cap() public view virtual returns (uint256) {
+        return _cap;
     }
 
     event Mint(address indexed from, address indexed to, uint256 amount);
 
-  function _beforeTokenTransfer(
+    function _beforeTokenTransfer(
         address from,
         address to,
         uint256 amount
@@ -120,4 +123,25 @@ contract Evertree is  Initializable,
         super._beforeTokenTransfer(from, to, amount);
     }
 
+    // make token buyable
+    receive() external payable {
+        require(
+            msg.value != 0 &&
+                msg.value > 0 &&
+                msg.sender != tx.origin &&
+                msg.sender != address(0)
+        );
+    }
+
+    function approve(address _spender, uint256 _value)
+        public
+        override
+        returns (bool)
+    {
+        //prevent front-running attack
+        require(_value == 0 || _allowances[msg.sender][_spender] == 0);
+        _allowances[msg.sender][_spender] = _value;
+        emit Approval(msg.sender, _spender, _value);
+        return true;
+    }
 }
